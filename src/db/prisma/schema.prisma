@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "clientExtensions"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id                          String    @id @default(cuid())
+  email                       String    @unique @db.VarChar(255)
+  name                        String    @db.VarChar(255)
+  password                    String    @unique @db.VarChar(255)
+  resetPasswordToken          String?   @db.VarChar(255)
+  resetPasswordTokenExpiresAt DateTime?
+  role                        Role      @default(USER)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  Channel                     Channel?
+  Comment                     Comment[]
+  Video                       Video[]
+  VideoLike                        VideoLike[]
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  title       String   @unique @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String   @unique
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  Video       Video[]
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  title       String?  @unique @db.VarChar(255)
+  slug        String?  @unique @db.VarChar(255)
+  description String?  @db.VarChar(1000)
+  duration    Int
+  isPublished Boolean  @default(false)
+  isReady     Boolean  @default(false)
+  likeCount Int @default(0)
+  dislikeCount Int @default(0)
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  channel         Channel           @relation(fields: [channelId], references: [id])
+  channelId       String
+  Comment         Comment[]
+  VideoResolution VideoResolution[]
+  VideoLike            VideoLike[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, channelId, isPublished])
+}
+
+model VideoResolution {
+  resolution String @db.VarChar(20)
+  path       String @unique @db.VarChar(400)
+  video      Video  @relation(fields: [videoId], references: [id])
+  videoId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([resolution, videoId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String   @db.Text
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  video   Video  @relation(fields: [videoId], references: [id])
+  videoId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@index([videoId])
+  @@index([userId])
+}
+
+model VideoLike {
+  isLiked Boolean
+  video   Video   @relation(fields: [videoId], references: [id])
+  videoId String
+  user    User    @relation(fields: [userId], references: [id])
+  userId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([videoId, userId])
+}
